@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图片颜色替换</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-ink: #2c2c2c;
+    --color-cream: #fffef5;
+    --color-marker-red: #ff6b6b;
+    --color-marker-teal: #4ecdc4;
+    --color-marker-yellow: #ffd93d;
+    --color-olive: #a98d16;
+    --font-sans: "Baloo 2", "Comic Sans MS", "Trebuchet MS", sans-serif;
+    --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+    --radius: 2px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--color-ink);
+    background: var(--color-cream);
+    padding: 12px 16px;
+    overflow: hidden;
+  }
+  .page { height: 100%; margin: 0 auto; display: flex; flex-direction: column; min-height: 0; }
+  .mast { margin-bottom: 10px; display: flex; align-items: flex-end; gap: 8px 20px; flex-wrap: wrap; }
+  h1 {
+    display: inline-block;
+    font-family: var(--font-sans);
+    font-weight: 800;
+    font-size: 32px;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    transform: rotate(-3deg);
+    transform-origin: left center;
+    transition: transform 150ms linear;
+  }
+  h1:hover { transform: rotate(0deg); }
+  .scribble { display: block; width: 168px; height: 12px; margin: 2px 0 0 6px; }
+  .lead { font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .circle-note { position: relative; display: inline-block; }
+  .circle-note svg { position: absolute; left: -8%; top: -35%; width: 116%; height: 170%; transform: rotate(6deg); pointer-events: none; }
+  .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(320px, 440px) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+  .note, .img-box {
+    position: relative;
+    background: var(--color-cream);
+    border: 3px dashed var(--color-ink);
+    border-radius: var(--radius);
+    box-shadow: 5px 5px 0 var(--color-marker-yellow);
+    transition: transform 150ms linear, box-shadow 150ms linear;
+  }
+  .note { padding: 16px 14px 12px; min-height: 0; overflow: auto; }
+  .note:hover, .img-box.tilt:hover { box-shadow: 8px 8px 0 var(--color-marker-red); }
+  .img-box:not(.tilt):hover { box-shadow: 8px 8px 0 var(--color-marker-red); }
+  .tape {
+    position: absolute;
+    top: -12px;
+    left: 28px;
+    width: 96px;
+    height: 24px;
+    background: rgba(255, 217, 61, 0.8);
+    transform: rotate(-4deg);
+    clip-path: polygon(8px 0, 4px 50%, 8px 100%, calc(100% - 8px) 100%, calc(100% - 4px) 50%, calc(100% - 8px) 0);
+    pointer-events: none;
+  }
+  .pin {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 22px;
+    height: 22px;
+    margin-left: -11px;
+    background: var(--color-marker-red);
+    border: 2px dashed var(--color-ink);
+    border-radius: 60% 40% 50% 50%;
+    box-shadow: 2px 2px 0 var(--color-ink);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .pin::after {
+    content: "";
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    left: 5px;
+    top: 5px;
+    background: var(--color-cream);
+    border-radius: 60% 40% 50% 50%;
+  }
+  .clip { position: absolute; top: 4px; right: 14px; width: 22px; height: 36px; pointer-events: none; z-index: 2; }
+  .row { margin-bottom: 10px; }
+  .row:last-child { margin-bottom: 0; }
+  .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.3;
+    letter-spacing: 0.04em;
+  }
+  input[type=text] {
+    width: 100%;
+    background: var(--color-cream);
+    color: var(--color-ink);
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+    padding: 7px 10px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.3;
+    transition: border-color 200ms linear, box-shadow 200ms linear;
+  }
+  input[type=text]::placeholder { color: rgba(44, 44, 44, 0.3); }
+  input[type=text]:focus {
+    outline: none;
+    border-color: var(--color-marker-red);
+    box-shadow: 2px 2px 0 var(--color-marker-yellow);
+  }
+  input[type=color] {
+    width: 40px;
+    height: 36px;
+    padding: 4px;
+    background: var(--color-cream);
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+    box-shadow: 3px 3px 0 var(--color-marker-yellow);
+    cursor: pointer;
+  }
+  input[type=color].color-empty { opacity: 0.45; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 10px;
+    background: var(--color-marker-yellow);
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -8px;
+    background: var(--color-marker-red);
+    border: 2px dashed var(--color-ink);
+    border-radius: 60% 40% 50% 50%;
+  }
+  input[type=range]::-moz-range-track {
+    height: 10px;
+    background: var(--color-marker-yellow);
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    background: var(--color-marker-red);
+    border: 2px dashed var(--color-ink);
+    border-radius: 60% 40% 50% 50%;
+  }
+  button {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    font-family: var(--font-sans);
+    font-weight: 800;
+    font-size: 15px;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: 4px 4px 0 var(--color-marker-red);
+    cursor: pointer;
+    transition: background 150ms linear, color 150ms linear, transform 150ms linear, box-shadow 150ms linear;
+  }
+  button:hover { background: var(--color-ink); color: var(--color-cream); transform: translate(-1px, -4px) rotate(1deg); box-shadow: 6px 6px 0 var(--color-marker-teal); }
+  button:active { transform: translate(3px, 3px) scale(0.98); box-shadow: none; }
+  button:disabled, button:disabled:hover {
+    background: var(--color-cream);
+    color: var(--color-olive);
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+  button:focus-visible, input:focus-visible, .file-list .item:focus-visible {
+    outline: 2px dashed var(--color-marker-red);
+    outline-offset: 3px;
+  }
+  .btn-row, .actions { display: flex; gap: 8px; }
+  .btn-row button, .actions button { flex: 1; min-width: 0; }
+  .swatch-row { display: flex; gap: 8px; align-items: center; }
+  .swatch-row input[type=text] { flex: 1; min-width: 0; width: auto; }
+  .check { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+  .check label { display: inline; margin: 0; letter-spacing: 0.04em; }
+  input[type=checkbox], input[type=radio] { accent-color: var(--color-marker-teal); width: 18px; height: 18px; }
+  .hint { margin-top: 4px; font-size: 13px; line-height: 1.4; }
+  .stage { min-height: 0; height: 100%; display: flex; flex-direction: column; gap: 8px; }
+  .zoom-bar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 6px 10px;
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+    box-shadow: 3px 3px 0 var(--color-marker-teal);
+    background: var(--color-cream);
+  }
+  .zoom-bar label { margin: 0; white-space: nowrap; letter-spacing: 0.04em; }
+  .images { flex: 1; display: grid; grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; gap: 12px; min-height: 0; }
+  .img-box { min-height: 0; height: 100%; padding: 0; overflow: auto; }
+  .canvas-wrap { min-width: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 8px; }
+  canvas { display: block; cursor: crosshair; }
+  .label {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: var(--color-marker-yellow);
+    color: var(--color-olive);
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+    padding: 4px 10px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.35;
+    letter-spacing: 0.12em;
+    box-shadow: 3px 3px 0 var(--color-marker-red);
+  }
+  .file-list {
+    max-height: 72px;
+    overflow-y: auto;
+    background: var(--color-cream);
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+    padding: 8px;
+    font-family: var(--font-body);
+    font-size: 16px;
+  }
+  .file-list .item { padding: 6px 8px; cursor: pointer; border-radius: var(--radius); }
+  .file-list .item:hover { background: var(--color-marker-teal); }
+  .file-list .item.active { background: var(--color-marker-yellow); color: var(--color-olive); }
+  .file-list .empty { padding: 6px 8px; }
+  .stats { margin-top: 6px; font-size: 13px; line-height: 1.4; word-break: break-all; }
+  .toast {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    max-width: 360px;
+    padding: 16px 24px;
+    background: var(--color-cream);
+    color: var(--color-ink);
+    border: 2px dashed var(--color-ink);
+    border-radius: var(--radius);
+    box-shadow: 4px 4px 0 var(--color-marker-red);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.4;
+    opacity: 0;
+    transform: translateY(8px) rotate(-1deg);
+    transition: opacity 150ms linear, transform 150ms linear;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0) rotate(-1deg); }
+  input[type=file] { display: none; }
+  @media (max-width: 860px), (max-height: 680px) {
+    body { height: auto; overflow: auto; }
+    .page { height: auto; }
+    .layout { grid-template-columns: 1fr; }
+    .stage { height: auto; }
+    .images { height: auto; grid-template-rows: auto auto; }
+    .img-box { min-height: 220px; height: 280px; }
+    .note { overflow: visible; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    h1, .note, .img-box, button, .toast { transition: none; }
+    h1 { transform: none; }
+    button:hover, button:active { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="mast">
+    <h1>图片颜色替换</h1>
+    <svg class="scribble" viewBox="0 0 200 16" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M2 10 C 24 2, 40 14, 62 8 S 104 2, 126 9 S 168 14, 198 5" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <p class="lead">选一张图或整个文件夹，换完下载压缩包，<span class="circle-note">不覆盖原图<svg viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden="true"><path d="M20 22 C 18 8, 100 4, 108 20 C 114 36, 24 42, 14 26" fill="none" stroke="#4ecdc4" stroke-width="2" stroke-linecap="round"/></svg></span>。</p>
+  </header>
+  <div class="layout">
+    <section class="note">
+      <span class="tape" aria-hidden="true"></span>
+      <div class="row">
+        <label>① 图片或文件夹</label>
+        <div class="btn-row">
+          <button type="button" id="pickFileBtn">选择图片</button>
+          <button type="button" id="pickDirBtn">选择文件夹</button>
+        </div>
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif" multiple>
+        <input type="file" id="dirInput" webkitdirectory multiple>
+      </div>
+      <div class="row">
+        <label>② 当前文件</label>
+        <div class="file-list" id="fileList"><div class="empty">还没有选择图片</div></div>
+      </div>
+      <div class="row colors">
+        <div>
+          <label>③ 要替换的颜色</label>
+          <div class="swatch-row">
+            <input type="color" id="targetColor" class="color-empty" value="#ffffff" aria-label="要替换的颜色">
+            <input type="text" id="targetHex" placeholder="点原图取色" autocomplete="off">
+          </div>
+        </div>
+        <div>
+          <label>④ 替换成</label>
+          <div class="swatch-row">
+            <input type="color" id="replaceColor" class="color-empty" value="#ffffff" aria-label="替换成的颜色">
+            <input type="text" id="replaceHex" placeholder="要换成的颜色" autocomplete="off">
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <label for="tolerance">⑤ 容差 <span id="tolVal">42</span></label>
+        <input type="range" id="tolerance" min="0" max="120" value="42">
+        <div class="hint">同一套颜色的深浅一起换。还有旧颜色，就往右拖一点。</div>
+      </div>
+      <div class="row">
+        <div class="check">
+          <input type="radio" name="mode" id="modeHsv" value="hsv" checked>
+          <label for="modeHsv">换整块界面</label>
+          <input type="radio" name="mode" id="modeRgb" value="rgb">
+          <label for="modeRgb">只换几乎一样的颜色</label>
+          <input type="checkbox" id="preserveTone" checked>
+          <label for="preserveTone">保留原来的深浅</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="actions">
+          <button type="button" id="previewBtn">更新预览</button>
+          <button type="button" id="downloadBtn">下载这张</button>
+          <button type="button" id="downloadFolderBtn">下载文件夹</button>
+        </div>
+        <div class="hint">下载的是压缩包，解压后就是整个文件夹，原图不会被盖掉。</div>
+      </div>
+      <div class="stats" id="stats"></div>
+    </section>
+    <div class="stage">
+      <div class="zoom-bar">
+        <label for="widthScale">宽度 <span id="widthVal">100</span>%</label>
+        <input type="range" id="widthScale" min="40" max="300" value="100" aria-label="显示宽度">
+        <label for="heightScale">高度 <span id="heightVal">100</span>%</label>
+        <input type="range" id="heightScale" min="40" max="300" value="100" aria-label="显示高度">
+      </div>
+      <div class="images">
+        <div class="img-box">
+          <span class="pin" aria-hidden="true"></span>
+          <div class="label">原图（点击取色）</div>
+          <div class="canvas-wrap"><canvas id="originalCanvas"></canvas></div>
+        </div>
+        <div class="img-box tilt">
+          <svg class="clip" viewBox="0 0 40 72" aria-hidden="true">
+            <path d="M16 10c-7 0-12 5-12 12v30c0 8 5 14 13 14s13-6 13-14V16c0-5-3-8-8-8s-8 3-8 8v30" fill="none" stroke="#4ecdc4" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <div class="label">预览</div>
+          <div class="canvas-wrap"><canvas id="previewCanvas"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const PREVIEW_MAX_EDGE = 1600;
+let files = [];
+let currentIndex = -1;
+let sourceImage = null;
+let previewTimer = 0;
+
+function toast(message) {
+  const node = $('toast');
+  node.textContent = message;
+  node.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => node.classList.remove('show'), 2200);
+}
+
+function normalizeHex(value) {
+  const text = value.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{3}$/.test(text)) {
+    return '#' + text.split('').map((part) => part + part).join('').toUpperCase();
+  }
+  if (/^[0-9a-fA-F]{6}$/.test(text)) return '#' + text.toUpperCase();
+  return '';
+}
+
+function hexToRgb(hex) {
+  const value = normalizeHex(hex);
+  if (!value) return null;
+  return [parseInt(value.slice(1, 3), 16), parseInt(value.slice(3, 5), 16), parseInt(value.slice(5, 7), 16)];
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+function markColorSet(pickerId) {
+  $(pickerId).classList.remove('color-empty');
+}
+
+function rgbToHsv(r, g, b) {
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  const value = max;
+  const saturation = max > 0 ? delta / max : 0;
+  let hue = 0;
+  if (delta > 0) {
+    if (max === red) {
+      hue = 60 * ((green - blue) / delta);
+      if (hue < 0) hue += 360;
+    } else if (max === green) {
+      hue = 60 * ((blue - red) / delta + 2);
+    } else {
+      hue = 60 * ((red - green) / delta + 4);
+    }
+  }
+  return [hue, saturation, value];
+}
+
+function hsvToRgb(hue, saturation, value) {
+  const turned = ((hue % 360) + 360) % 360;
+  const chroma = value * saturation;
+  const section = turned / 60;
+  const x = chroma * (1 - Math.abs(section % 2 - 1));
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  const segment = Math.floor(section) % 6;
+  if (segment === 0) { red = chroma; green = x; }
+  else if (segment === 1) { red = x; green = chroma; }
+  else if (segment === 2) { green = chroma; blue = x; }
+  else if (segment === 3) { green = x; blue = chroma; }
+  else if (segment === 4) { red = x; blue = chroma; }
+  else { red = chroma; blue = x; }
+  const match = value - chroma;
+  return [(red + match) * 255 | 0, (green + match) * 255 | 0, (blue + match) * 255 | 0];
+}
+
+function hueDistance(left, right) {
+  const diff = Math.abs(left - right);
+  return diff > 180 ? 360 - diff : diff;
+}
+
+function recolorImageData(imageData, target, replacement, tolerance, mode, preserveTone) {
+  const data = imageData.data;
+  const targetHue = rgbToHsv(target[0], target[1], target[2])[0];
+  const replacementHue = rgbToHsv(replacement[0], replacement[1], replacement[2])[0];
+  let count = 0;
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index + 3] === 0) continue;
+    const red = data[index];
+    const green = data[index + 1];
+    const blue = data[index + 2];
+    let matched = false;
+    if (mode === 'rgb') {
+      const dr = red - target[0];
+      const dg = green - target[1];
+      const db = blue - target[2];
+      matched = Math.sqrt(dr * dr + dg * dg + db * db) <= tolerance;
+    } else {
+      matched = hueDistance(rgbToHsv(red, green, blue)[0], targetHue) <= tolerance;
+    }
+    if (!matched) continue;
+    count += 1;
+    if (preserveTone) {
+      const [, saturation, value] = rgbToHsv(red, green, blue);
+      const next = hsvToRgb(replacementHue, saturation, value);
+      data[index] = next[0];
+      data[index + 1] = next[1];
+      data[index + 2] = next[2];
+    } else {
+      data[index] = replacement[0];
+      data[index + 1] = replacement[1];
+      data[index + 2] = replacement[2];
+    }
+  }
+  return count;
+}
+
+function drawContain(canvas, image, maxEdge) {
+  const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return context;
+}
+
+function applyViewScale() {
+  const widthScale = Number($('widthScale').value) / 100;
+  const heightScale = Number($('heightScale').value) / 100;
+  $('widthVal').textContent = $('widthScale').value;
+  $('heightVal').textContent = $('heightScale').value;
+  if (!sourceImage) return;
+  ['originalCanvas', 'previewCanvas'].forEach((id) => {
+    const canvas = $(id);
+    const box = canvas.closest('.img-box');
+    if (!canvas.width || !canvas.height || !box) return;
+    const maxW = Math.max(1, box.clientWidth - 16);
+    const maxH = Math.max(1, box.clientHeight - 16);
+    const fit = Math.min(maxW / canvas.width, maxH / canvas.height);
+    canvas.style.width = Math.max(1, Math.round(canvas.width * fit * widthScale)) + 'px';
+    canvas.style.height = Math.max(1, Math.round(canvas.height * fit * heightScale)) + 'px';
+  });
+}
+
+function settings() {
+  const target = hexToRgb($('targetHex').value);
+  const replacement = hexToRgb($('replaceHex').value);
+  if (!target || !replacement) return null;
+  return {
+    target,
+    replacement,
+    tolerance: Number($('tolerance').value),
+    mode: $('modeHsv').checked ? 'hsv' : 'rgb',
+    preserveTone: $('preserveTone').checked,
+  };
+}
+
+function renderPreview(manual) {
+  if (!sourceImage) {
+    if (manual) toast('请先选择一张图片');
+    return;
+  }
+  const options = settings();
+  if (!options) {
+    drawContain($('previewCanvas'), sourceImage, PREVIEW_MAX_EDGE);
+    applyViewScale();
+    $('stats').textContent = manual ? '还没有选择起始颜色和替换颜色' : '点原图取色，再填写要换成的颜色';
+    if (manual) toast('请先选择要替换的颜色，以及换成什么颜色');
+    return;
+  }
+  const canvas = $('previewCanvas');
+  const context = drawContain(canvas, sourceImage, PREVIEW_MAX_EDGE);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const count = recolorImageData(imageData, options.target, options.replacement, options.tolerance, options.mode, options.preserveTone);
+  context.putImageData(imageData, 0, 0);
+  applyViewScale();
+  $('stats').textContent = '预览已更新，换了 ' + count + ' 个像素。下载时按原图尺寸保存。';
+}
+
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => renderPreview(false), 180);
+}
+
+function renderFileList() {
+  const list = $('fileList');
+  list.textContent = '';
+  if (!files.length) {
+    list.innerHTML = '<div class="empty">还没有选择图片</div>';
+    return;
+  }
+  files.forEach((file, index) => {
+    const item = document.createElement('div');
+    item.className = 'item' + (index === currentIndex ? ' active' : '');
+    item.textContent = file.name;
+    item.addEventListener('click', () => loadFile(index));
+    list.appendChild(item);
+  });
+}
+
+function loadFile(index) {
+  const file = files[index];
+  if (!file) return;
+  currentIndex = index;
+  renderFileList();
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    URL.revokeObjectURL(url);
+    sourceImage = image;
+    drawContain($('originalCanvas'), image, PREVIEW_MAX_EDGE);
+    const options = settings();
+    if (!options) {
+      drawContain($('previewCanvas'), image, PREVIEW_MAX_EDGE);
+      applyViewScale();
+      $('stats').textContent = '点原图取色，再填写要换成的颜色';
+      return;
+    }
+    renderPreview(false);
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    toast('这张图片打不开');
+  };
+  image.src = url;
+}
+
+const IMAGE_EXT = /\.(png|jpe?g|webp|bmp|gif)$/i;
+
+function isImage(file) {
+  return IMAGE_EXT.test(file.name) || (file.type || '').startsWith('image/');
+}
+
+function crc32(bytes) {
+  if (!crc32.table) {
+    const table = new Uint32Array(256);
+    for (let index = 0; index < 256; index += 1) {
+      let value = index;
+      for (let bit = 0; bit < 8; bit += 1) value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
+      table[index] = value >>> 0;
+    }
+    crc32.table = table;
+  }
+  let crc = 0xffffffff;
+  for (let index = 0; index < bytes.length; index += 1) crc = crc32.table[(crc ^ bytes[index]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function buildZip(entries) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  entries.forEach((entry) => {
+    const nameBytes = encoder.encode(entry.name);
+    const crc = crc32(entry.data);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, entry.data.length, true);
+    local.setUint32(22, entry.data.length, true);
+    local.setUint16(26, nameBytes.length, true);
+    localParts.push(new Uint8Array(local.buffer), nameBytes, entry.data);
+    const central = new DataView(new ArrayBuffer(46));
+    central.setUint32(0, 0x02014b50, true);
+    central.setUint16(4, 20, true);
+    central.setUint16(6, 20, true);
+    central.setUint16(8, 0x0800, true);
+    central.setUint32(16, crc, true);
+    central.setUint32(20, entry.data.length, true);
+    central.setUint32(24, entry.data.length, true);
+    central.setUint16(28, nameBytes.length, true);
+    central.setUint32(42, offset, true);
+    centralParts.push(new Uint8Array(central.buffer), nameBytes);
+    offset += 30 + nameBytes.length + entry.data.length;
+  });
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, entries.length, true);
+  end.setUint16(10, entries.length, true);
+  end.setUint32(12, centralSize, true);
+  end.setUint32(16, offset, true);
+  return new Blob(localParts.concat(centralParts, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
+}
+
+function outputPath(file) {
+  const relative = file.webkitRelativePath || file.name;
+  const slash = relative.indexOf('/');
+  if (slash === -1) return relative.replace(/\.[^.]+$/, '') + '-换色.png';
+  const folder = relative.slice(0, slash);
+  const rest = relative.slice(slash + 1).replace(/\.[^.]+$/, '') + '.png';
+  return folder + '-换色/' + rest;
+}
+
+function zipName(imageFiles) {
+  const relative = imageFiles[0] && imageFiles[0].webkitRelativePath;
+  if (relative && relative.includes('/')) return relative.slice(0, relative.indexOf('/')) + '-换色.zip';
+  return '换色.zip';
+}
+
+function saveBlob(blob, filename) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+}
+
+function loadImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(file.name));
+    };
+    image.src = url;
+  });
+}
+
+async function recolorFile(file, options) {
+  const image = await loadImageFile(file);
+  const canvas = document.createElement('canvas');
+  const context = drawContain(canvas, image, Math.max(image.width, image.height));
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const count = recolorImageData(imageData, options.target, options.replacement, options.tolerance, options.mode, options.preserveTone);
+  context.putImageData(imageData, 0, 0);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) throw new Error(file.name);
+  return { count, bytes: new Uint8Array(await blob.arrayBuffer()) };
+}
+
+function downloadCurrent() {
+  if (!sourceImage) {
+    toast('请先选择一张图片');
+    return;
+  }
+  const options = settings();
+  if (!options) {
+    toast('请先选择要替换的颜色，以及换成什么颜色');
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  const context = drawContain(canvas, sourceImage, Math.max(sourceImage.width, sourceImage.height));
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const count = recolorImageData(imageData, options.target, options.replacement, options.tolerance, options.mode, options.preserveTone);
+  context.putImageData(imageData, 0, 0);
+  const file = files[currentIndex];
+  const stem = file ? file.name.replace(/\.[^.]+$/, '') : '换色';
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      toast('保存失败');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = stem + '-换色.png';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    $('stats').textContent = '已下载 ' + link.download + '，换了 ' + count + ' 个像素。';
+  }, 'image/png');
+}
+
+function useChosenFiles(chosen) {
+  files = chosen.filter(isImage);
+  if (!files.length) {
+    renderFileList();
+    toast('这个文件夹里没有图片');
+    return;
+  }
+  loadFile(0);
+  $('stats').textContent = '已选择 ' + files.length + ' 张图片';
+}
+
+$('pickFileBtn').addEventListener('click', () => $('fileInput').click());
+$('pickDirBtn').addEventListener('click', () => $('dirInput').click());
+$('fileInput').addEventListener('change', () => {
+  useChosenFiles(Array.from($('fileInput').files || []));
+  $('fileInput').value = '';
+});
+$('dirInput').addEventListener('change', () => {
+  useChosenFiles(Array.from($('dirInput').files || []));
+  $('dirInput').value = '';
+});
+$('tolerance').addEventListener('input', () => {
+  $('tolVal').textContent = $('tolerance').value;
+  schedulePreview();
+});
+function onViewScale() {
+  applyViewScale();
+}
+$('widthScale').addEventListener('input', onViewScale);
+$('heightScale').addEventListener('input', onViewScale);
+window.addEventListener('resize', applyViewScale);
+$('targetHex').addEventListener('input', () => {
+  const hex = normalizeHex($('targetHex').value);
+  if (!hex) return;
+  $('targetColor').value = hex;
+  markColorSet('targetColor');
+  schedulePreview();
+});
+$('replaceHex').addEventListener('input', () => {
+  const hex = normalizeHex($('replaceHex').value);
+  if (!hex) return;
+  $('replaceColor').value = hex;
+  markColorSet('replaceColor');
+  schedulePreview();
+});
+$('targetColor').addEventListener('input', () => {
+  $('targetHex').value = $('targetColor').value.toUpperCase();
+  markColorSet('targetColor');
+  schedulePreview();
+});
+$('replaceColor').addEventListener('input', () => {
+  $('replaceHex').value = $('replaceColor').value.toUpperCase();
+  markColorSet('replaceColor');
+  schedulePreview();
+});
+$('modeHsv').addEventListener('change', schedulePreview);
+$('modeRgb').addEventListener('change', schedulePreview);
+$('preserveTone').addEventListener('change', schedulePreview);
+$('previewBtn').addEventListener('click', () => renderPreview(true));
+$('downloadBtn').addEventListener('click', downloadCurrent);
+$('downloadFolderBtn').addEventListener('click', async () => {
+  const images = files.filter(isImage);
+  if (!images.length) {
+    toast('请先选择图片或文件夹');
+    return;
+  }
+  const options = settings();
+  if (!options) {
+    toast('请先选择要替换的颜色，以及换成什么颜色');
+    return;
+  }
+  const button = $('downloadFolderBtn');
+  button.disabled = true;
+  const entries = [];
+  let failed = 0;
+  for (let index = 0; index < images.length; index += 1) {
+    const file = images[index];
+    $('stats').textContent = '正在处理 ' + (index + 1) + ' / ' + images.length + '：' + file.name;
+    try {
+      const result = await recolorFile(file, options);
+      entries.push({ name: outputPath(file), data: result.bytes });
+    } catch (error) {
+      failed += 1;
+    }
+  }
+  button.disabled = false;
+  if (!entries.length) {
+    toast('没有可以保存的图片');
+    return;
+  }
+  const filename = zipName(images);
+  saveBlob(buildZip(entries), filename);
+  $('stats').textContent = '已下载 ' + filename + '，成功 ' + entries.length + ' 张' + (failed ? '，跳过 ' + failed + ' 张' : '') + '。解压后就是整个文件夹。';
+});
+$('originalCanvas').addEventListener('click', (event) => {
+  const canvas = $('originalCanvas');
+  if (!canvas.width || !canvas.height) {
+    toast('请先选择一张图片');
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.min(canvas.width - 1, Math.max(0, Math.floor((event.clientX - rect.left) / rect.width * canvas.width)));
+  const y = Math.min(canvas.height - 1, Math.max(0, Math.floor((event.clientY - rect.top) / rect.height * canvas.height)));
+  const pixel = canvas.getContext('2d', { willReadFrequently: true }).getImageData(x, y, 1, 1).data;
+  const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+  $('targetHex').value = hex;
+  $('targetColor').value = hex;
+  markColorSet('targetColor');
+  toast('已取色 ' + hex);
+  renderPreview(true);
+});
+
+$('targetHex').value = '';
+$('replaceHex').value = '';
+$('targetColor').value = '#ffffff';
+$('replaceColor').value = '#ffffff';
+</script>
+</body>
+</html>
